@@ -14,3 +14,7 @@ __venv/
 
 # Configuração específica do usuário
 config.json
+
+#Chrome Driver
+
+chromedriver.exe
