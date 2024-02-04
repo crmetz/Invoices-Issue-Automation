@@ -1,0 +1,16 @@
+# Arquivos temporários ou específicos do Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ambiente virtual
+venv/
+venv3/
+__venv/
+
+# Arquivos de log
+*.log
+
+# Configuração específica do usuário
+config.json
