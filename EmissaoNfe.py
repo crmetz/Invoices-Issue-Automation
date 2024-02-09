@@ -14,21 +14,22 @@ from selenium.webdriver.common.alert import Alert
 import sys
 from selenium.common.exceptions import NoSuchElementException
 import json
+import re
 
 class EmissaoNfe:
-    def __init__(self, paginas, num_iniciais, num_finais):
+    def __init__(self, paginas, num_pedidos, half_screen_width, screen_height):
         script_dir = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+
         self.download_directory = os.path.join(script_dir, 'nfes')
         self.chrome_driver_path = os.path.join(script_dir, 'chromedriver.exe')
         self.output_folder = os.path.join(script_dir, 'nfes')
 
         self.paginas = paginas
-        self.num_iniciais = num_iniciais
-        self.num_finais = num_finais
+        self.num_pedidos = num_pedidos
+        self.half_screen_width = half_screen_width
+        self.screen_height = screen_height 
         self.driver = None
-        print(self.paginas)
-        print(num_iniciais)
-        print(num_finais)
+        
 
     def convert_pdf_to_images(self, pdf_path, output_folder):
         images = convert_from_path(pdf_path, 300)
@@ -95,38 +96,18 @@ class EmissaoNfe:
     def run_automation(self):
         script_dir = os.path.dirname(os.path.abspath(__file__))
         self.login()
-        
-        print(len(self.paginas))
-        if len(self.paginas)>1:
-            if self.paginas[0] > self.paginas[1]:
-                store = self.paginas[1]
-                self.paginas[1] = self.paginas[0]
-                self.paginas[0] = store
 
-                store = self.num_iniciais[1]
-                self.num_iniciais[1] = self.num_iniciais[0]
-                self.num_iniciais[0] = store
-
-                store = self.num_finais[1]
-                self.num_finais[1] = self.num_finais[0]
-                self.num_finais[0] = store
-        
-        print(self.paginas)
-        print(self.num_iniciais)
-        print(self.num_finais)     
-
-        
-                   
         i = 0
-        for pagina in self.paginas:
-            self.change_page(pagina)
-            print("Trocando a pagina")
-            for numero_pedido in range(int(self.num_iniciais[i]), int(self.num_finais[i])+1):
-                print("Download Order")
-                chave_acesso = self.emitir_nfe(numero_pedido)
+        for numero_pedido in self.num_pedidos:
 
+
+            if self.paginas[i]:
+                self.change_page(self.paginas[i])
+                print("Trocando a pagina")
+            if numero_pedido:
+                print("Emitir nfe")
+                chave_acesso = self.emitir_nfe(numero_pedido)
                 #chave de acesso e ja colocar dinamico
-                # pdf_path = r'C:\Users\Cristian\Desktop\Projetos Programação\OrdersPrintingAutomation\pedidos\pedido_{}.pdf'.format(numero_pedido)
                 pdf_path = os.path.join(script_dir, r'nfes\{}.pdf'.format(chave_acesso))
                 self.convert_pdf_to_images(pdf_path, self.output_folder)
                 self.return_main_tab()
@@ -187,34 +168,47 @@ class EmissaoNfe:
         download_btn = WebDriverWait(self.driver, 30).until(
             EC.visibility_of_element_located((By.XPATH, "/html/body/div[17]/div[1]/div[2]/div[2]/div[1]/form/table/tbody/tr/td/div[2]/div/div/div[2]/div/div/div/a"))
         )
+        sleep(5)
+        print("Antes de baixar a nota")
         download_btn.click()
 
         # Salva a chave de acesso(nome do arquivo)
         try:
-            # Obtenha o elemento HTML
-            element = self.driver.find_element_by_class_name("row")
+            # chave_element = WebDriverWait(self.driver, 15).until(
+            #     EC.visibility_of_element_located((By.XPATH, "/html/body/div[17]/div[1]/div[2]/div[2]/div[1]/form/table/tbody/tr/td/div[2]/div/div/div[2]/div/div/text()[4]"))
+            # )
+            # print(chave_element)
+            # # Obter o texto do elemento
+            # chave_text = chave_element.text
+            # print(chave_text)
+            # # Extract the text from the element
+            # full_text = chave_text.strip()
+            # print("Full Chave de Acesso:", full_text)
 
-            # Obtenha o texto do elemento
-            element_text = element.text
+            # # Use regex to extract only the numeric part
+            # chave_acesso_match = re.search(r'(\d+)', full_text)
 
-            # Encontre a posição da substring "Chave de acesso:"
-            start_index = element_text.find("Chave de acesso:")
+            success_message = WebDriverWait(self.driver, 15).until(
+                EC.presence_of_element_located((By.XPATH, "//strong[contains(text(),'Nota Fiscal emitida com sucesso!')]"))
+            )
 
-            if start_index != -1:
-                # Extrai a substring após "Chave de acesso:"
-                chave_acesso = element_text[start_index + len("Chave de acesso:"):].strip()
+            # Extract the Chave de Acesso from the success message using regex
+            chave_acesso_match = re.search(r'Chave de acesso: (\d+)', success_message.text)
+
+            if chave_acesso_match:
+                chave_acesso = chave_acesso_match.group(1)
                 print("Número da Chave de Acesso:", chave_acesso)
                 return chave_acesso
             else:
                 print("Chave de acesso não encontrada.")
-                return None
 
-            # Adicione seus comandos de sono aqui
-            sleep(200)
-            print("First sleep finished")
-            sleep(200)
-            print("Second sleep finished")
-            sleep(200)
+                # Adicione seus comandos de sono aqui
+                sleep(200)
+                print("First sleep finished")
+                sleep(200)
+                print("Second sleep finished")
+                sleep(200)
+                return None
 
         except NoSuchElementException as e:
             # Lidar com a exceção específica que ocorre quando o elemento não é encontrado
@@ -237,10 +231,9 @@ class EmissaoNfe:
             sleep(200)
             return None
         
-        print("Download sleep finished")
 
 if __name__ == "__main__":
-    orders_automation = EmissaoNfe(["1"], ["15331"], ["15331"])
+    orders_automation = EmissaoNfe()
     orders_automation.run_automation()
 
 
