@@ -1,3 +1,4 @@
+from time import sleep
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.service import Service
@@ -107,13 +108,13 @@ class EmissaoNfe:
             if numero_pedido:
                 print("Emitir nfe")
                 chave_acesso = self.emitir_nfe(numero_pedido)
+                sleep(4)
                 #chave de acesso e ja colocar dinamico
                 pdf_path = os.path.join(script_dir, r'nfes\{}.pdf'.format(chave_acesso))
                 self.convert_pdf_to_images(pdf_path, self.output_folder)
                 self.return_main_tab()
-                sleep(60)
-                print("favela venceu")
             i += 1
+        self.driver.quit()
 
         #self.driver.quit()
     def emitir_nfe(self, numero_pedido):
@@ -141,11 +142,14 @@ class EmissaoNfe:
         )
         natureza_field = self.driver.find_element('id', 'natureza_pedido')
         natureza_field.send_keys('5104')
-        autocomplete = WebDriverWait(self.driver, 5).until(
+        sleep(5)
+
+        autocomplete = WebDriverWait(self.driver, 10).until(
             EC.visibility_of_element_located((By.ID, 'autocomplete_1'))
         )
+        
         autocomplete.click()
-        sleep(15)
+        sleep(10)
 
 
         #Abre o menu de confirmação
@@ -174,26 +178,16 @@ class EmissaoNfe:
 
         # Salva a chave de acesso(nome do arquivo)
         try:
-            # chave_element = WebDriverWait(self.driver, 15).until(
-            #     EC.visibility_of_element_located((By.XPATH, "/html/body/div[17]/div[1]/div[2]/div[2]/div[1]/form/table/tbody/tr/td/div[2]/div/div/div[2]/div/div/text()[4]"))
-            # )
-            # print(chave_element)
-            # # Obter o texto do elemento
-            # chave_text = chave_element.text
-            # print(chave_text)
-            # # Extract the text from the element
-            # full_text = chave_text.strip()
-            # print("Full Chave de Acesso:", full_text)
-
-            # # Use regex to extract only the numeric part
-            # chave_acesso_match = re.search(r'(\d+)', full_text)
-
-            success_message = WebDriverWait(self.driver, 15).until(
-                EC.presence_of_element_located((By.XPATH, "//strong[contains(text(),'Nota Fiscal emitida com sucesso!')]"))
+            # Localize o elemento pai que contém o texto que você deseja acessar
+            element_pai = WebDriverWait(self.driver, 15).until(
+                EC.visibility_of_element_located((By.XPATH, "//*[@id='Layer_Transmitir']/div/div/div[2]/div/div"))
             )
 
-            # Extract the Chave de Acesso from the success message using regex
-            chave_acesso_match = re.search(r'Chave de acesso: (\d+)', success_message.text)
+            # Obtenha todo o texto dentro do elemento pai
+            texto_pai = element_pai.text
+
+            # Use regex para encontrar a chave de acesso dentro do texto pai
+            chave_acesso_match = re.search(r'Chave de acesso: (\d+)', texto_pai)
 
             if chave_acesso_match:
                 chave_acesso = chave_acesso_match.group(1)
@@ -201,13 +195,9 @@ class EmissaoNfe:
                 return chave_acesso
             else:
                 print("Chave de acesso não encontrada.")
-
-                # Adicione seus comandos de sono aqui
                 sleep(200)
-                print("First sleep finished")
                 sleep(200)
-                print("Second sleep finished")
-                sleep(200)
+            #     print("First sleep finished")
                 return None
 
         except NoSuchElementException as e:
